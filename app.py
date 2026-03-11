@@ -126,7 +126,7 @@ def summarize_text(text):
 
 # # # # # # Streamlit Application
 st.set_page_config(page_title="Smart AI Assistant")
-st.title("Smart Document + Web Assistant")
+st.title("Multi-Document RAG Search Engine (with Real-Time Web Search)")
 
 # Sidebar
 web_toggle = st.sidebar.toggle("Enable Real-Time Web-Search")
@@ -220,3 +220,9 @@ if query and len(query.strip()) > 3:
 
 # Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 # .\venv\Scripts\Activate.ps1
+
+
+# changes into github code.
+# git add .
+# git commit -m "Added PDF summarization feature"
+# git push
