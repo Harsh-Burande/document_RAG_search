@@ -1,4 +1,4 @@
-# 🤖 Agentic AI Assistant (RAG + Web Search)
+# 🤖 Multi-Document RAG Search Engine (with Real-Time Web Search)
 
 An intelligent AI assistant built using **Streamlit and Large Language Models (LLMs)** that can answer questions using uploaded documents or perform web search when required.
 
