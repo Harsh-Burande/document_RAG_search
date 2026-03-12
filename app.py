@@ -11,7 +11,13 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 
 
-# # # # # env
+# -----------------------------------------
+# ENVIRONMENT SETUP
+# -----------------------------------------
+# This section loads API keys from the .env file
+# and initializes external services used in the project:
+# - Gemini (for LLM responses and embeddings)
+# - Tavily (for real-time web search fallback)
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -23,7 +29,16 @@ tavily = TavilyClient(api_key=TAVILY_API_KEY)
 # FAISS index location
 index_path = "faiss_index"
 
-# Loading document
+# -----------------------------------------
+# DATA PROCESSING
+# -----------------------------------------
+# This section handles document ingestion and preparation.
+# It loads user-provided content from:
+# 1. Uploaded PDF or TXT files
+# 2. A URL (web page)
+# The loaded content is converted into LangChain Document objects.
+
+# Loading documents
 def load_document(uploaded_file, url_input):
     if uploaded_file:
         if uploaded_file.type == "application/pdf":
@@ -50,6 +65,15 @@ def load_document(uploaded_file, url_input):
 
         return docs
 
+# -----------------------------------------
+# DATA PROCESSING – TEXT CHUNKING
+# -----------------------------------------
+# Large documents cannot be directly processed by embeddings or LLMs.
+# This function splits the document into smaller chunks so that:
+# - Each chunk can be embedded
+# - Retrieval becomes more precise
+# - Context fits within model token limits.
+
 # Text splitting and Chunking
 def split_documents(documents):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -58,6 +82,13 @@ def split_documents(documents):
     )
     return text_splitter.split_documents(documents)
 
+# -----------------------------------------
+# DATA PROCESSING – RAW TEXT EXTRACTION
+# -----------------------------------------
+# This function extracts all the text content from the document.
+# It is mainly used for summarization, where the entire document
+# content needs to be passed to the LLM.
+
 # Extracting Text
 def extract_text(documents):
     full_text = ""
@@ -65,6 +96,14 @@ def extract_text(documents):
         full_text += doc.page_content + "\n"
         
     return full_text
+
+# -----------------------------------------
+# REAL-TIME WEB SEARCH (FALLBACK SYSTEM)
+# -----------------------------------------
+# If the answer cannot be found in the uploaded documents,
+# the system falls back to Tavily search to retrieve information
+# from the internet. This ensures the assistant still returns
+# a useful answer even when the document lacks the information.
 
 # Web-Search function
 def web_search(query):
@@ -76,6 +115,17 @@ def web_search(query):
     )
 
     return content
+
+# -----------------------------------------
+# RAG CHAIN (Retrieval Augmented Generation)
+# -----------------------------------------
+# This is the core logic of the system.
+# Steps:
+# 1. Retrieve relevant document chunks from the vector database
+# 2. Build a prompt containing the retrieved context
+# 3. Send the prompt to the Gemini LLM
+# 4. If the answer is not found in the document context,
+#    trigger web search fallback.
 
 # Generate output to the user query
 def answer_question(query, vector_store):
@@ -110,6 +160,13 @@ def answer_question(query, vector_store):
 
     return answer, "document"
 
+# -----------------------------------------
+# LLM SUMMARIZATION
+# -----------------------------------------
+# This function summarizes the entire document.
+# It extracts raw text and sends it to Gemini
+# to generate a concise summary for quick understanding.
+
 # Summarizing and Generating Output Text
 def summarize_text(text):
     model = genai.GenerativeModel("gemini-flash-lite-latest")
@@ -123,6 +180,17 @@ def summarize_text(text):
     return response.text
 
     
+# # # # # # Streamlit Application
+# -----------------------------------------
+# UI FLOW – STREAMLIT APPLICATION
+# -----------------------------------------
+# This section defines the user interface.
+# The Streamlit app allows users to:
+# - Upload documents
+# - Provide URLs
+# - Ask questions
+# - Enable real-time web search
+# - Generate document summaries.
 
 # # # # # # Streamlit Application
 st.set_page_config(page_title="Smart AI Assistant")
@@ -147,8 +215,13 @@ if query:
 
 
 
+# -----------------------------------------
+# MAIN APPLICATION EXECUTION FLOW
+# -----------------------------------------
+# Once the user enters a query, the system decides which mode to use:
+# 1. Web Mode → Direct web search using Tavily
+# 2. Document Mode → RAG pipeline using uploaded documents
 
-# Output Loader
 if query and len(query.strip()) > 3:
 
     # WEB MODE (skip document processing)
@@ -174,16 +247,26 @@ if query and len(query.strip()) > 3:
                 # Split documents
                 docs = split_documents(documents)
 
-                # Create vector store for current document
+                # -----------------------------------------
+                # EMBEDDINGS
+                # -----------------------------------------
+                # Convert each document chunk into a numerical vector
+                # using Gemini Embedding model. These vectors capture
+                # semantic meaning of the text, enabling similarity search.
+
                 embeddings = GoogleGenerativeAIEmbeddings(
                     model="models/gemini-embedding-001",
                     google_api_key=GOOGLE_API_KEY
                 )
 
-                vector_store = FAISS.from_documents(docs, embeddings)
+                # -----------------------------------------
+                # VECTOR DATABASE (FAISS)
+                # -----------------------------------------
+                # FAISS stores embeddings in a vector index so that
+                # we can quickly retrieve the most relevant document
+                # chunks for a user query using similarity search.
 
-                # st.subheader("Preview")
-                # st.write(documents[0].page_content[:500])
+                vector_store = FAISS.from_documents(docs, embeddings)
 
                 # RAG answer
                 with st.spinner("Answering..."):
@@ -225,4 +308,7 @@ if query and len(query.strip()) > 3:
 # changes into github code.
 # git add .
 # git commit -m "Added PDF summarization feature"
+# git push
+
+# git pull origin main --rebase
 # git push
